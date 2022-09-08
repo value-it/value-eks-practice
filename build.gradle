@@ -1,0 +1,11 @@
+buildscript {
+    ext {
+        encoding = 'UTF-8'
+        javaCompatibility = 17
+        springBootVersion = '2.6.6'
+    }
+}
+
+repositories {
+    mavenCentral()
+}
