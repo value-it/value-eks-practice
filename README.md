@@ -54,7 +54,7 @@ aws cloudformation deploy \
 # ECRリポジトリ
 aws cloudformation deploy \
 --stack-name eks-practice-template-ecr \
---template-file ./establish/cloudformation/03-ecr.yaml \
+--template-file ./establish/cloudformation/02-ecr.yaml \
 --parameter-overrides RepositoryName=$ECR_APP_REPO_NAME
 ```
 
