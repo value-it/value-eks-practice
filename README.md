@@ -1,9 +1,10 @@
 # EKSクラスターを作成してサンプルJavaアプリケーションをデプロイする雛形
 
 - IngressはAWS Load Balancer Controller（パブリックサブネットを使用）
-- 
-- 
+- サンプルJavaアプリケーションはHelloWorldを画面表示するだけのSpringBootのWEBアプリ
+- Datadogエージェントインストール（オプション）
 
+---
 
 # 前提条件
 
@@ -45,7 +46,7 @@ export REGION=ap-northeast-1
 
 ## CloudFormationで基本リソース作成
 ```shell
-# ネットワーク
+# ネットワーク(VPC/Subnet等)
 aws cloudformation deploy \
 --stack-name eks-practice-template-network \
 --template-file ./establish/cloudformation/01-create-network.yaml \
@@ -81,6 +82,7 @@ RES=`aws eks update-cluster-config \
 --region $REGION \
 --name $K8S_CLUSTER_NAME \
 --logging '{"clusterLogging":[{"types":["api","audit","authenticator","controllerManager","scheduler"],"enabled":true}]}'`
+echo $RES
 ```
 
 ### ノードグループ作成
@@ -146,7 +148,7 @@ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch
 kubectl get pods -n amazon-cloudwatch
 ```
 
-## Datadogエージェント
+## Datadogエージェント（オプション）
 Datadogを使用しない場合はこの手順スキップ
 ```shell
 # Helmチャートファイルをダウンロード
@@ -178,7 +180,8 @@ cat ./establish/k8s-manifests/deployment.yaml | sed "s|@ecr_container_url|${ACCO
 kubectl get pods
 ```
 
-### Ingress
+---
+## Ingressインストール
 ```shell
 # ユーザーに代わって AWS API を呼び出すことを許可する、AWS Load Balancer Controller 用の IAM ポリシーをダウンロード
 curl -o iam_policy.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.0/docs/install/iam_policy.json
@@ -200,10 +203,10 @@ eksctl create iamserviceaccount \
 # TargetGroupBinding のカスタムリソース定義をインストール
 kubectl apply -k "github.com/aws/eks-charts/stable/aws-load-balancer-controller/crds?ref=master"
 
-# eks-charts リポジトリを追加します。
+# eks-charts リポジトリを追加
 helm repo add eks https://aws.github.io/eks-charts
 
-# ローカルリポジトリを更新して、最新のグラフがあることを確認します。
+# ローカルリポジトリを更新して最新のグラフがあることを確認
 helm repo update
 
 # コントローラをインストール
@@ -219,6 +222,31 @@ helm ls -n kube-system
 # ingress - controller ログ確認
 kubectl logs -n kube-system deployment.apps/aws-load-balancer-controller
 
-# ingressをデプロイ
+# Ingressをデプロイ
 kubectl apply -f ./establish/k8s-manifests/ingress.yaml
 ```
+
+
+
+---
+
+# 削除手順
+
+```shell
+# Ingress削除
+kubectl delete -f ./establish/k8s-manifests/ingress.yaml
+
+# Ingressコントローラ削除
+helm uninstall aws-load-balancer-controller -n kube-system
+
+# Ingress用サービスアカウント削除
+eksctl delete iamserviceaccount --cluster $K8S_CLUSTER_NAME --name=aws-load-balancer-controller
+
+# ノードグループ削除
+eksctl delete nodegroup --cluster $K8S_CLUSTER_NAME --name $K8S_CLUSTER_NAME-ng1 
+
+# クラスタ削除
+eksctl delete cluster --name $K8S_CLUSTER_NAME
+
+```
+
