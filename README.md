@@ -33,11 +33,6 @@
 # 事前に作成したAWSプロファイルを指定（プロファイル名は適宜修正）
 export AWS_PROFILE=hogehoge
 
-# リソース監視にDatadogを使用する場合はAPIキーを指定
-# 参考
-# https://dev.classmethod.jp/articles/datadog-aws-marketplace/
-export DATADOG_API_KEY=xxxxxxxxxxxxxx
-
 export K8S_CLUSTER_NAME=eks-practice-cluster
 export ECR_APP_REPO_NAME=eks-practice/application
 export NODES_SSH_PUBLIC_KEY=eks-practice-key
@@ -146,17 +141,6 @@ kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch
 
 # デプロイされたPodを確認（2件表示される）
 kubectl get pods -n amazon-cloudwatch
-```
-
-## Datadogエージェント（オプション）
-Datadogを使用しない場合はこの手順スキップ
-```shell
-# Helmチャートファイルをダウンロード
-curl -O https://raw.githubusercontent.com/DataDog/helm-charts/master/charts/datadog/values.yaml
-# Helmリポジトリ追加
-helm repo add datadog https://helm.datadoghq.com
-# インストール
-helm install eks-practice-datadog -f values.yaml --set datadog.apiKey=$DATADOG_API_KEY datadog/datadog
 ```
 
 ---

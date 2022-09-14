@@ -21,4 +21,5 @@ build
 
 # download files
 values.yaml
+datadog-charts.yaml
 iam_policy.json
