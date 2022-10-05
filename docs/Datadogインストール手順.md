@@ -69,3 +69,10 @@ EC2やALB等、EKSクラスター以外のリソースを監視する場合はAm
 3. 連携したいAWSマネコンにログインした状態で`AWS Accounts のAutomatically Using CloudFormation`ボタンを押す
 4. CloudFormationのスタック作成に遷移するのでそのままスタック作成
 5. 連携に必要なIAMやLamda等各種リソースが出来上がる
+
+
+---
+
+# アプリログをDatadogで監視するための設定
+
+TBD

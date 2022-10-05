@@ -32,6 +32,7 @@
 ```shell
 # 事前に作成したAWSプロファイルを指定（プロファイル名は適宜修正）
 export AWS_PROFILE=hogehoge
+echo "AWS_ACCOUNT_ID="`aws sts get-caller-identity --query 'Account' --output text`
 
 export K8S_CLUSTER_NAME=eks-practice-cluster
 export ECR_APP_REPO_NAME=eks-practice/application
@@ -81,7 +82,7 @@ echo $RES
 ```
 
 ### ノードグループ作成
-この処理には5分程度かかる
+この処理には10分程度かかる
 ```shell
 eksctl create nodegroup \
 --cluster $K8S_CLUSTER_NAME \
@@ -96,9 +97,9 @@ eksctl create nodegroup \
 --ssh-access \
 --ssh-public-key $NODES_SSH_PUBLIC_KEY \
 --managed
-# 一度失敗しても二回目やるとうまくいく？？
+# 失敗した場合は削除して再度実行する
 # 削除コマンド
-# eksctl delete nodegroup --region=ap-northeast-1 --cluster=bootapps-k8s --name=bootapps-k8s-ng1
+# eksctl delete nodegroup --region=ap-northeast-1 --cluster=$K8S_CLUSTER_NAME --name=$K8S_CLUSTER_NAME-ng1
 
 # 作成したノードグループ一覧確認
 eksctl get nodegroup --cluster $K8S_CLUSTER_NAME
@@ -148,20 +149,19 @@ kubectl get pods -n amazon-cloudwatch
 
 ### ビルド
 ```shell
-ACCOUNT_ID=`aws sts get-caller-identity --query 'Account' --output text`
-aws ecr get-login-password --region $REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+aws ecr get-login-password --region $REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 docker build -t hello-world-java .
-docker tag hello-world-java:latest ${ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
-docker push ${ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
+docker tag hello-world-java:latest ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
+docker push ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
 ```
 
 ### デプロイ
 ```shell
 kubectl create namespace kube-system
-cat ./establish/k8s-manifests/deployment.yaml | sed "s|@ecr_container_url|${ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest|" | kubectl apply -f -
+cat ./establish/k8s-manifests/deployment.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest|" | kubectl apply -f -
 
 # 確認
-kubectl get pods
+kubectl get pods -n kube-system
 ```
 
 ---
@@ -180,7 +180,7 @@ eksctl create iamserviceaccount \
 --cluster=${K8S_CLUSTER_NAME} \
 --namespace=kube-system \
 --name=aws-load-balancer-controller \
---attach-policy-arn=arn:aws:iam::${ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
+--attach-policy-arn=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
 --override-existing-serviceaccounts \
 --approve
 
@@ -232,5 +232,12 @@ eksctl delete nodegroup --cluster $K8S_CLUSTER_NAME --name $K8S_CLUSTER_NAME-ng1
 # クラスタ削除
 eksctl delete cluster --name $K8S_CLUSTER_NAME
 
+# ECRリポジトリ削除
+aws ecr delete-repository --repository-name $ECR_APP_REPO_NAME --force
+aws cloudformation delete-stack --stack-name eks-practice-template-ecr
+
+# ネットワーク(VPC/Subnet等)削除
+aws cloudformation delete-stack --stack-name eks-practice-template-network
+aws cloudformation wait stack-delete-complete --stack-name eks-practice-template-network
 ```
 
