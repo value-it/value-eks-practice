@@ -32,7 +32,8 @@
 ```shell
 # 事前に作成したAWSプロファイルを指定（プロファイル名は適宜修正）
 export AWS_PROFILE=hogehoge
-echo "AWS_ACCOUNT_ID="`aws sts get-caller-identity --query 'Account' --output text`
+export AWS_ACCOUNT_ID=`aws sts get-caller-identity --query 'Account' --output text`
+echo AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID
 
 export K8S_CLUSTER_NAME=eks-practice-cluster
 export ECR_APP_REPO_NAME=eks-practice/application
@@ -149,7 +150,7 @@ kubectl get pods -n amazon-cloudwatch
 
 ### ビルド
 ```shell
-aws ecr get-login-password --region $REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
+aws ecr get-login-password --region $REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
 docker build -t hello-world-java .
 docker tag hello-world-java:latest ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
 docker push ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
