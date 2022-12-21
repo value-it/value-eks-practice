@@ -10,8 +10,11 @@ spec:
       app.kubernetes.io/name: java-microservice
   template:
     metadata:
+      annotations:
+        admission.datadoghq.com/java-lib.version: "latest"
       labels:
         app.kubernetes.io/name: java-microservice
+        admission.datadoghq.com/enabled: "true"
     spec:
       containers:
         - name: java-microservice-container

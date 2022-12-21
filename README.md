@@ -49,10 +49,15 @@ aws cloudformation deploy \
 --template-file ./establish/cloudformation/01-create-network.yaml \
 --parameter-overrides K8sClusterName=$K8S_CLUSTER_NAME
 
+# NATゲートウェイ
+aws cloudformation deploy \
+--stack-name eks-practice-template-nat-gateway \
+--template-file ./establish/cloudformation/02-create-nat-gateway.yaml
+
 # ECRリポジトリ
 aws cloudformation deploy \
 --stack-name eks-practice-template-ecr \
---template-file ./establish/cloudformation/02-ecr.yaml \
+--template-file ./establish/cloudformation/03-ecr.yaml \
 --parameter-overrides RepositoryName=$ECR_APP_REPO_NAME
 ```
 
@@ -71,6 +76,12 @@ eksctl create cluster \
 --vpc-private-subnets $K8S_CLUSTER_SUBNETS \
 --with-oidc \
 --without-nodegroup
+```
+
+### ノード1台に配置可能なPod数を引き上げるための設定
+```shell
+kubectl set env daemonset aws-node -n kube-system ENABLE_PREFIX_DELEGATION=true
+kubectl set env ds aws-node -n kube-system WARM_PREFIX_TARGET=1
 ```
 
 ### CloudWatch Logs有効化
@@ -224,14 +235,30 @@ kubectl delete -f ./establish/k8s-manifests/ingress.yaml
 # Ingressコントローラ削除
 helm uninstall aws-load-balancer-controller -n kube-system
 
-# Ingress用サービスアカウント削除
-eksctl delete iamserviceaccount --cluster $K8S_CLUSTER_NAME --name=aws-load-balancer-controller
+# Ingress用サービスアカウントのCloudformationスタック削除
+aws cloudformation delete-stack --stack-name eksctl-$K8S_CLUSTER_NAME-addon-iamserviceaccount-kube-system-aws-load-balancer-controller
+
+# ノード用サービスアカウントのCloudformationスタック削除
+aws cloudformation delete-stack --stack-name eksctl-$K8S_CLUSTER_NAME-addon-iamserviceaccount-kube-system-aws-node
+
+# NodeInstanceRoleに追加でアタッチしているポリシーをデタッチ（後続のノードグループ削除時にRole削除が失敗するので）
+INSTANCE_ROLE=`eksctl get iamidentitymapping --cluster $K8S_CLUSTER_NAME | grep NodeInstanceRole | awk '{print $1}' | awk -F '/' '{print $2}'`
+aws iam detach-role-policy --role-name $INSTANCE_ROLE --policy-arn arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
 
 # ノードグループ削除
 eksctl delete nodegroup --cluster $K8S_CLUSTER_NAME --name $K8S_CLUSTER_NAME-ng1 
 
+# ノード用サービスアカウントのCloudformationスタック削除
+aws cloudformation delete-stack --stack-name eksctl-$K8S_CLUSTER_NAME-addon-iamserviceaccount-kube-system-aws-node
+
+# CloudFormationによるノードグループ削除完了を待つ
+aws cloudformation wait stack-delete-complete --stack-name eksctl-$K8S_CLUSTER_NAME-nodegroup-$K8S_CLUSTER_NAME-ng1
+
 # クラスタ削除
 eksctl delete cluster --name $K8S_CLUSTER_NAME
+
+# NATゲートウェイのCloudformationスタック削除
+aws cloudformation delete-stack --stack-name eks-practice-template-nat-gateway
 
 # ECRリポジトリ削除
 aws ecr delete-repository --repository-name $ECR_APP_REPO_NAME --force
@@ -241,4 +268,3 @@ aws cloudformation delete-stack --stack-name eks-practice-template-ecr
 aws cloudformation delete-stack --stack-name eks-practice-template-network
 aws cloudformation wait stack-delete-complete --stack-name eks-practice-template-network
 ```
-

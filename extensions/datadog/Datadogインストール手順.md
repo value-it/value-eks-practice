@@ -40,6 +40,8 @@ helm upgrade --install datadog \
 --set datadog.apiKey=$DATADOG_API_KEY \
 datadog/datadog
 
+#helm uninstall datadog -n kube-system
+
 # インストールされたことを確認
 kubectl get svc -n kube-system
 # 以下の3サービスが登録されていること
@@ -50,7 +52,7 @@ kubectl get svc -n kube-system
 
 ### 3. ダッシュボード確認
 数分待つとKubernetesダッシュボードに各種Metricsがあがってくる
-> https://app.datadoghq.com/dashboard/lists?q=kubernetes+cluster+overview
+> https://app.datadoghq.com/dashboard/lists?q=cluster+overview
 
 ---
 ---
@@ -72,6 +74,32 @@ EC2やALB等、EKSクラスター以外のリソースを監視する場合はAm
 
 
 ---
+
+# APMを動かす手順
+datadog-charts.yaml の以下の箇所を編集し、`helm upgrade` でagentに反映する  
+`DD_ENV` の値は環境を表す文字列に適宜書き換え
+
+```yaml
+datadog:
+  apm:
+    portEnabled: true
+    enabled: true
+    
+agents:
+  containers:
+    traceAgent:
+      env:
+        - name: DD_ENV
+          value: hogehoge
+```
+
+```shell
+helm upgrade datadog \
+-f datadog-charts.yaml \
+-n kube-system \
+--set datadog.apiKey=$DATADOG_API_KEY \
+datadog/datadog
+```
 
 # アプリログをDatadogで監視するための設定
 

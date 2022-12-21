@@ -135,28 +135,6 @@ Resources:
           Value: "true"
 
   # ------------------------------------------------------------#
-  #  NAT Gateway
-  # ------------------------------------------------------------#
-  NATGateway:
-    Type: "AWS::EC2::NatGateway"
-    Properties:
-      # NAT ゲートウェイに関連付ける Elastic IPアドレスの割り当て ID
-      AllocationId: !GetAtt NATGatewayAEIP.AllocationId
-      SubnetId: !Ref Public1Subnet
-      Tags:
-        - Key: Name
-          Value: !Sub "${ProjectName}-network-natgw"
-  # NATGateway For Elastic IP Create
-  NATGatewayAEIP:
-    Type: "AWS::EC2::EIP"
-    Properties:
-      # ------------------------------------------------------
-      # Elastic IP アドレスが VPC のインスタンスで使用するか、
-      # EC2-Classic のインスタンスで使用するか
-      # ------------------------------------------------------
-      Domain: vpc
-
-  # ------------------------------------------------------------#
   #  RouteTable
   # ------------------------------------------------------------#
   # Public RouteTable Create
@@ -187,13 +165,6 @@ Resources:
       RouteTableId: !Ref PublicRouteTable
       DestinationCidrBlock: "0.0.0.0/0"
       GatewayId: !Ref InternetGateway
-
-  PrivateRoute:
-    Type: "AWS::EC2::Route"
-    Properties:
-      RouteTableId: !Ref PrivateRouteTable
-      DestinationCidrBlock: "0.0.0.0/0"
-      NatGatewayId: !Ref NATGateway
 
   # ------------------------------------------------------------#
   # RouteTable Associate
@@ -277,3 +248,12 @@ Outputs:
     Export:
       Name: !Sub "${ProjectName}-network-vpc-cidrblock"
 
+  InternetGateway:
+    Value: !Ref InternetGateway
+    Export:
+      Name: !Sub "${ProjectName}-network-igw"
+
+  PrivateRouteTable:
+    Value: !Ref PrivateRouteTable
+    Export:
+      Name: !Sub "${ProjectName}-private-route-table"
