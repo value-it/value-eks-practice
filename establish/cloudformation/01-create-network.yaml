@@ -107,6 +107,10 @@ Resources:
           Value: !Sub "${ProjectName}-network-private1-subnet"
         - Key: ForK8SPrivateCluster
           Value: "true"
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${K8sClusterName}"
+          Value: "shared"
 
   # Private2 Subnet Create
   Private2Subnet:
@@ -120,6 +124,10 @@ Resources:
           Value: !Sub "${ProjectName}-network-private2-subnet"
         - Key: ForK8SPrivateCluster
           Value: "true"
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${K8sClusterName}"
+          Value: "shared"
 
   # Private3 Subnet Create
   Private3Subnet:
@@ -133,6 +141,10 @@ Resources:
           Value: !Sub "${ProjectName}-network-private3-subnet"
         - Key: ForK8SPrivateCluster
           Value: "true"
+        - Key: kubernetes.io/role/internal-elb
+          Value: "1"
+        - Key: !Sub "kubernetes.io/cluster/${K8sClusterName}"
+          Value: "shared"
 
   # ------------------------------------------------------------#
   #  RouteTable
