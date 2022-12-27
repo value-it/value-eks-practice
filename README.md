@@ -248,9 +248,6 @@ aws iam detach-role-policy --role-name $INSTANCE_ROLE --policy-arn arn:aws:iam::
 # ノードグループ削除
 eksctl delete nodegroup --cluster $K8S_CLUSTER_NAME --name $K8S_CLUSTER_NAME-ng1 
 
-# ノード用サービスアカウントのCloudformationスタック削除
-aws cloudformation delete-stack --stack-name eksctl-$K8S_CLUSTER_NAME-addon-iamserviceaccount-kube-system-aws-node
-
 # CloudFormationによるノードグループ削除完了を待つ
 aws cloudformation wait stack-delete-complete --stack-name eksctl-$K8S_CLUSTER_NAME-nodegroup-$K8S_CLUSTER_NAME-ng1
 
