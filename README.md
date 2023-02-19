@@ -23,6 +23,20 @@
 
 #### ノードグループEC2用のキーペア「eks-practice-key」が作成されている
 
+### AWS Codestar Connectionsの接続作成
+GitHubからソースコードを取得するための接続を以下より作成  
+https://ap-northeast-1.console.aws.amazon.com/codesuite/settings/connections/create?origin=settings&region=ap-northeast-1
+
+### AWS SystemsManagerのパラメータストアで以下の値を登録
+https://ap-northeast-1.console.aws.amazon.com/systems-manager/parameters/?region=ap-northeast-1  
+予めDockerHubのユーザー登録を済ませておく必要あり
+
+| 名前                     | タイプ | データ型 | 値                |
+|------------------------|-----|------|------------------|
+| /CI/DOCKERHUB_USERNAME | 文字列 | text | (DockerHubユーザー名) |
+| /CI/DOCKERHUB_PASSWORD | 文字列 | text | (DockerHubパスワード) |
+
+
 ---
 
 # EKSクラスター構築手順
@@ -39,6 +53,12 @@ export K8S_CLUSTER_NAME=eks-practice-cluster
 export ECR_APP_REPO_NAME=eks-practice/application
 export NODES_SSH_PUBLIC_KEY=eks-practice-key
 export REGION=ap-northeast-1
+
+# 前手順で作成したAWS Codestar ConnectionsのARNを指定
+```shell
+# ex) CODESTART_CONNECTION_ARN=arn:aws:codestar-connections:ap-northeast-1:xxxxxxxx:connection/xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx
+export CODESTAR_CONNECTION_ARN=
+
 ```
 
 ## CloudFormationで基本リソース作成
@@ -46,19 +66,46 @@ export REGION=ap-northeast-1
 # ネットワーク(VPC/Subnet等)
 aws cloudformation deploy \
 --stack-name eks-practice-template-network \
---template-file ./establish/cloudformation/01-create-network.yaml \
+--template-file ./establish/cloudformation/01.create-network.yaml \
 --parameter-overrides K8sClusterName=$K8S_CLUSTER_NAME
+
+# セキュリティグループ
+aws cloudformation deploy \
+--stack-name eks-practice-template-securitygroup \
+--template-file ./establish/cloudformation/02.securitygroup.yaml
+
+# VPCエンドポイント
+aws cloudformation deploy \
+--stack-name eks-practice-template-vpc-endpoint \
+--template-file ./establish/cloudformation/03.vpc-endpoint.yaml
+
+# CI Base
+aws cloudformation deploy \
+--stack-name eks-practice-template-ci-base \
+--template-file ./establish/cloudformation/04.01.ci.base.yaml \
+--capabilities CAPABILITY_NAMED_IAM
+
+# CI ECRリポジトリ
+aws cloudformation deploy \
+--stack-name eks-practice-template-ecr \
+--template-file ./establish/cloudformation/04.02.ci.ecr.yaml \
+--parameter-overrides RepositoryName=$ECR_APP_REPO_NAME
+
+# CI CodeBuild
+aws cloudformation deploy \
+--stack-name eks-practice-template-codebuild \
+--template-file ./establish/cloudformation/04.03.ci.codebuild.yaml
+
+# CI CodePipeline
+aws cloudformation deploy \
+--stack-name eks-practice-template-codepipeline \
+--template-file ./establish/cloudformation/04.04.ci.codepipeline.yaml \
+--parameter-overrides CodeStarConnectionArn=$CODESTAR_CONNECTION_ARN
 
 # NATゲートウェイ
 aws cloudformation deploy \
 --stack-name eks-practice-template-nat-gateway \
---template-file ./establish/cloudformation/02-create-nat-gateway.yaml
-
-# ECRリポジトリ
-aws cloudformation deploy \
---stack-name eks-practice-template-ecr \
---template-file ./establish/cloudformation/03-ecr.yaml \
---parameter-overrides RepositoryName=$ECR_APP_REPO_NAME
+--template-file ./establish/cloudformation/05.create-nat-gateway.yaml
 ```
 
 ## EKSでk8sクラスター構築
@@ -161,10 +208,7 @@ kubectl get pods -n amazon-cloudwatch
 
 ### ビルド
 ```shell
-aws ecr get-login-password --region $REGION --profile $AWS_PROFILE | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-docker build -t hello-world-java .
-docker tag hello-world-java:latest ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
-docker push ${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest
+aws codepipeline start-pipeline-execution --name eks-practice-deploy-pipeline
 ```
 
 ### デプロイ
