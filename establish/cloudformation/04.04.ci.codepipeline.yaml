@@ -1,0 +1,89 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CI CodePipeline.'
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-practice
+  Stage:
+    Type: String
+    Default: dev
+  GithubOrganization:
+    Type: String
+    Default: value-it
+  GithubRepository:
+    Type: String
+    Default: value-eks-practice
+  CodeStarConnectionArn:
+    Type: String
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Mappings:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+  source:
+    dev:
+      branch: master
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Resources:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+# - - - - - - - - - - - - - - - - -
+  CodePipeline:
+# - - - - - - - - - - - - - - - - -
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      ArtifactStore:
+        Type: S3
+        Location:
+            Fn::ImportValue:
+              !Sub S3Bucket-${ProjectName}-resources-${Stage}
+      Name: !Join
+              - '-'
+              - - !Ref ProjectName
+                - deploy
+                - pipeline
+      RoleArn:
+        Fn::ImportValue:
+          !Sub CodePipelineRoleArn-${ProjectName}
+      Stages:
+        -
+          Name: SourceStage
+          Actions:
+            -
+              Name: SourcePull
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeStarSourceConnection
+              OutputArtifacts:
+                - Name: SourceArtifact
+              Configuration:
+                FullRepositoryId: !Sub "${GithubOrganization}/${GithubRepository}"
+                ConnectionArn: !Ref CodeStarConnectionArn
+                BranchName: !FindInMap [ source, !Ref Stage, branch ]
+                DetectChanges: "false"
+              RunOrder: 1
+
+        -
+          Name: BuildStage
+          Actions:
+            -
+              Name: BuildApplication
+              InputArtifacts:
+                - Name: SourceArtifact
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName:
+                  Fn::ImportValue:
+                    !Join
+                      - '-'
+                      - - CodeBuild
+                        - !Ref ProjectName
+              OutputArtifacts:
+                - Name: BuildArtifact
+              RunOrder: 1

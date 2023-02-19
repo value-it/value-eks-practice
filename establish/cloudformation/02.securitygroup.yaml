@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'Security Group'
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-practice
+  Stage:
+    Type: String
+    Default: dev
+  CidrBlockAll:
+    Type: String
+    Default: 0.0.0.0/0
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Resources:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+# - - - - - - - - - - - - - - - - -
+  SecurityGroupCodebuild:
+# - - - - - - - - - - - - - - - - -
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-Codebuild
+      GroupDescription: To connect to Codebuild in VPC
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${ProjectName}-${Stage}-network-vpc
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          CidrIp:
+            Fn::ImportValue:
+              !Sub ${ProjectName}-${Stage}-network-vpc-cidrblock
+          Description: ALL From VPC
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: !Ref CidrBlockAll
+          Description: ALL to ALL
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref ProjectName
+              - Codebuild
+        - Key: ProjectName
+          Value: !Ref ProjectName
+
+
+  # - - - - - - - - - - - - - - - - -
+  SecurityGroupApiVpcEndpoint:
+    # - - - - - - - - - - - - - - - - -
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub ${ProjectName}-${Stage}-ECR-VPC-Endpoint
+      GroupDescription: To SMTP connect to ECR VPC Endpoint
+      VpcId:
+        Fn::ImportValue:
+          !Sub ${ProjectName}-${Stage}-network-vpc
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "10.0.10.0/24"
+          Description: ECR From private subnet 1a
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "10.0.11.0/24"
+          Description: ECR From private subnet 1c
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: "10.0.12.0/24"
+          Description: ECR From private subnet 1d
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref ProjectName
+              - !Ref Stage
+              - EcrVpcEndpoint
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: Stage
+          Value: !Ref Stage
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Outputs:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+
+  SecurityGroupCodebuild:
+    Value: !Ref SecurityGroupCodebuild
+    Export:
+      Name: !Sub "${ProjectName}-sg-codebuild"
+
+  SecurityGroupApiVpcEndpoint:
+    Value: !Ref SecurityGroupApiVpcEndpoint
+    Export:
+      Name: !Sub "${ProjectName}-${Stage}-sg-api-vpc-endpoint"

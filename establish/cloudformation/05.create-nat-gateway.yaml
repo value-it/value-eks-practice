@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion:
+  "2010-09-09"
+Description: Nat Gateway construction
+
+# ------------------------------------------------------------#
+# Input Parameters
+# ------------------------------------------------------------#
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-practice
+  Stage:
+    Type: String
+    Default: dev
+
+Resources:
+  # ------------------------------------------------------------#
+  #  NAT Gateway
+  # ------------------------------------------------------------#
+  NATGateway:
+    Type: "AWS::EC2::NatGateway"
+    Properties:
+      # NAT ゲートウェイに関連付ける Elastic IPアドレスの割り当て ID
+      AllocationId: !GetAtt NATGatewayAEIP.AllocationId
+      SubnetId:
+        Fn::ImportValue:
+          !Sub ${ProjectName}-${Stage}-network-public1-subnet
+      Tags:
+        - Key: Name
+          Value: !Sub "${ProjectName}-network-natgw"
+  # NATGateway For Elastic IP Create
+  NATGatewayAEIP:
+    Type: "AWS::EC2::EIP"
+    Properties:
+      # ------------------------------------------------------
+      # Elastic IP アドレスが VPC のインスタンスで使用するか、
+      # EC2-Classic のインスタンスで使用するか
+      # ------------------------------------------------------
+      Domain: vpc
+
+  # ------------------------------------------------------------#
+  # Routing
+  # ------------------------------------------------------------#
+  PrivateRoute:
+    Type: "AWS::EC2::Route"
+    Properties:
+      RouteTableId:
+        Fn::ImportValue:
+          !Sub ${ProjectName}-${Stage}-private-route-table
+      DestinationCidrBlock: "0.0.0.0/0"
+      NatGatewayId: !Ref NATGateway

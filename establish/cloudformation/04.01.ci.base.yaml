@@ -1,0 +1,310 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'CI Base Resources'
+Parameters:
+  ProjectName:
+    Type: String
+    Default: eks-practice
+  Stage:
+    Type: String
+    Default: dev
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Resources:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+# - - - - - - - - - - - - - - - - -
+  S3BucketResources:
+# - - - - - - - - - - - - - - - - -
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    Properties:
+      BucketName: !Join
+            - '-'
+            - - !Ref ProjectName
+              - resources
+              - !Ref Stage
+      AccessControl: Private
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Suspended
+      Tags:
+        - Key: Name
+          Value: !Join
+            - '-'
+            - - !Ref ProjectName
+              - resources
+              - !Ref Stage
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: Stage
+          Value: !Ref Stage
+
+## - - - - - - - - - - - - - - - - -
+  CodebuildRole:
+# - - - - - - - - - - - - - - - - -
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - '-'
+        - - !Ref ProjectName
+          - CodeBuild
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser
+      Policies:
+        - PolicyName: CloudWatchLogs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+
+        - PolicyName: S3Artifacts
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                Effect: Allow
+                Resource: !Join
+                  - '/'
+                  - - !GetAtt S3BucketResources.Arn
+                    - '*'
+        - PolicyName: VPCPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeDhcpOptions
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                  - ec2:DescribeSubnets
+                  - ec2:DescribeSecurityGroups
+                  - ec2:DescribeVpcs
+                Effect: Allow
+                Resource: '*'
+              - Action:
+                  - ec2:CreateNetworkInterfacePermission
+                Effect: Allow
+                Resource: !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
+                Condition:
+                  StringEquals:
+                    ec2:Subnet:
+                      - !Join
+                        - '/'
+                        - - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet
+                          - Fn::ImportValue:
+                              !Sub ${ProjectName}-${Stage}-network-public1-subnet
+                      - !Join
+                        - '/'
+                        - - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet
+                          - Fn::ImportValue:
+                              !Sub ${ProjectName}-${Stage}-network-public2-subnet
+                      - !Join
+                        - '/'
+                        - - !Sub arn:aws:ec2:${AWS::Region}:${AWS::AccountId}:subnet
+                          - Fn::ImportValue:
+                              !Sub ${ProjectName}-${Stage}-network-public3-subnet
+
+        - PolicyName: SecretManager
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: SystemsManagerGetParameter
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: EcrBuildDeploy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - ecr:PutImageTagMutability
+                  - ecr:StartImageScan
+                  - ecr:DescribeImageReplicationStatus
+                  - ecr:ListTagsForResource
+                  - ecr:UploadLayerPart
+                  - ecr:BatchDeleteImage
+                  - ecr:ListImages
+                  - ecr:BatchGetRepositoryScanningConfiguration
+                  - ecr:DeleteRepository
+                  - ecr:CompleteLayerUpload
+                  - ecr:TagResource
+                  - ecr:DescribeRepositories
+                  - ecr:BatchCheckLayerAvailability
+                  - ecr:ReplicateImage
+                  - ecr:GetLifecyclePolicy
+                  - ecr:PutLifecyclePolicy
+                  - ecr:DescribeImageScanFindings
+                  - ecr:GetLifecyclePolicyPreview
+                  - ecr:CreateRepository
+                  - ecr:PutImageScanningConfiguration
+                  - ecr:GetDownloadUrlForLayer
+                  - ecr:DeleteLifecyclePolicy
+                  - ecr:PutImage
+                  - ecr:UntagResource
+                  - ecr:BatchGetImage
+                  - ecr:DescribeImages
+                  - ecr:StartLifecyclePolicyPreview
+                  - ecr:InitiateLayerUpload
+                  - ecr:GetRepositoryPolicy
+                Effect: Allow
+                Resource: !Sub arn:aws:ecr:*:${AWS::AccountId}:bootapps-tmpl/*
+
+
+  # - - - - - - - - - - - - - - - - -
+  CodePipelineRole:
+    # - - - - - - - - - - - - - - - - -
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Join
+        - '-'
+        - - !Ref ProjectName
+          - CodePipeline
+      AssumeRolePolicyDocument:
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/AWSCodePipelineApproverAccess
+        - arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess
+      Policies:
+        - PolicyName: CodePipelineArtifactsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - s3:PutObject
+                  - s3:PutObjectAcl
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:GetBucketVersioning
+                Effect: Allow
+                Resource: !Join
+                  - '/'
+                  - - !GetAtt S3BucketResources.Arn
+                    - '*'
+        - PolicyName: InterfaceWithCodeCommit
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - codecommit:CancelUploadArchive
+                  - codecommit:GetBranch
+                  - codecommit:GetCommit
+                  - codecommit:GetUploadArchiveStatus
+                  - codecommit:UploadArchive
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: SystemsManagerGetParameter
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - ssm:GetParameters
+                  - ssm:GetParameter
+                Effect: Allow
+                Resource: '*'
+        - PolicyName: UseCodeStarConnections
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - codestar-connections:UseConnection
+                  - codestar-connections:GetConnection
+                  - codestar-connections:ListConnections
+                Effect: Allow
+                Resource: '*'
+
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+Outputs:
+# + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
+# - - - - - - - - - - - - - - - - -
+  S3BucketResources:
+    Value: !Ref S3BucketResources
+    Export:
+      Name: !Join
+        - '-'
+        - - S3Bucket
+          - !Ref ProjectName
+          - resources
+          - !Ref Stage
+  S3BucketResourcesArn:
+    Value: !GetAtt S3BucketResources.Arn
+    Export:
+      Name: !Join
+        - '-'
+        - - S3BucketArn
+          - !Ref ProjectName
+          - resources
+          - !Ref Stage
+
+  # - - - - - - - - - - - - - - - - -
+  CodebuildRole:
+    Value: !Ref CodebuildRole
+    Export:
+      Name: !Join
+        - '-'
+        - - CodebuildRole
+          - !Ref ProjectName
+
+  CodebuildRoleArn:
+    Value: !GetAtt CodebuildRole.Arn
+    Export:
+      Name: !Join
+        - '-'
+        - - CodebuildRoleArn
+          - !Ref ProjectName
+
+  CodePipelineRole:
+    Value: !Ref CodePipelineRole
+    Export:
+      Name: !Join
+        - '-'
+        - - CodePipelineRole
+          - !Ref ProjectName
+
+  CodePipelineRoleArn:
+    Value: !GetAtt CodePipelineRole.Arn
+    Export:
+      Name: !Join
+        - '-'
+        - - CodePipelineRoleArn
+          - !Ref ProjectName
