@@ -83,9 +83,15 @@ datadog-charts.yaml の以下の箇所を編集し、`helm upgrade` でagentに�
 datadog:
   apm:
     portEnabled: true
-    
+
 agents:
   containers:
+    agent:
+      env:
+        - name: DD_CLOUD_PROVIDER_METADATA
+          value: "aws"
+          # デフォルトのままだとGCPのAPIを呼ぼうとしてエラーログを吐くためAWSを明示的に指定
+
     traceAgent:
       env:
         - name: DD_ENV
