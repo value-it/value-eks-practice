@@ -83,7 +83,6 @@ datadog-charts.yaml の以下の箇所を編集し、`helm upgrade` でagentに�
 datadog:
   apm:
     portEnabled: true
-    enabled: true
     
 agents:
   containers:
