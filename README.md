@@ -305,6 +305,12 @@ aws cloudformation delete-stack --stack-name eks-practice-template-nat-gateway
 aws ecr delete-repository --repository-name $ECR_APP_REPO_NAME --force
 aws cloudformation delete-stack --stack-name eks-practice-template-ecr
 
+# S3バケット削除
+aws s3api delete-objects --bucket eks-practice-resources-dev \
+--delete "$(aws s3api list-object-versions --bucket eks-practice-resources-dev \
+--query='{Objects: Versions[].{Key:Key,VersionId:VersionId}}')" > /dev/null
+aws s3 rb s3://eks-practice-resources-dev --force
+
 # ネットワーク(VPC/Subnet等)削除
 aws cloudformation delete-stack --stack-name eks-practice-template-network
 aws cloudformation wait stack-delete-complete --stack-name eks-practice-template-network

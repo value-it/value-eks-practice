@@ -6,7 +6,7 @@ Parameters:
     Default: eks-practice
   RepositoryName:
     Type: String
-    Default: eks-practice-application
+    Default: eks-practice/application
 
 # + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + + +
 Resources:

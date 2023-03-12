@@ -21,6 +21,12 @@ spec:
           image: @ecr_container_url
           ports:
             - containerPort: 38080
+          env:
+            # Datadog APM用にアプリケーションがトレースを送信する先のホスト
+            - name: DD_AGENT_HOST
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
 
 ---
 apiVersion: v1
