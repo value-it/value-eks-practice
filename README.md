@@ -215,6 +215,7 @@ aws codepipeline start-pipeline-execution --name eks-practice-deploy-pipeline
 ```shell
 kubectl create namespace kube-system
 cat ./establish/k8s-manifests/deployment.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest|" | kubectl apply -f -
+#cat ./establish/k8s-manifests/deployment.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/${ECR_APP_REPO_NAME}:latest|" | kubectl replace --force -f -
 
 # 確認
 kubectl get pods -n kube-system
