@@ -2,25 +2,23 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   namespace: kube-system
-  name: sample-application-deployment
+  name: sample-csharp-application-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: java-microservice
+      app.kubernetes.io/name: csharp-application
   template:
     metadata:
-      annotations:
-        admission.datadoghq.com/java-lib.version: "latest"
       labels:
-        app.kubernetes.io/name: java-microservice
+        app.kubernetes.io/name: csharp-application
         admission.datadoghq.com/enabled: "true"
     spec:
       containers:
-        - name: java-microservice-container
+        - name: csharp-application-container
           image: @ecr_container_url
           ports:
-            - containerPort: 38080
+            - containerPort: 48080
           env:
             # Datadog APM用にアプリケーションがトレースを送信する先のホスト
             - name: DD_AGENT_HOST
@@ -28,18 +26,18 @@ spec:
                 fieldRef:
                   fieldPath: status.hostIP
             - name: DD_ENV
-              value: java-app
+              value: csharp-app
 ---
 apiVersion: v1
 kind: Service
 metadata:
   namespace: kube-system
-  name: sample-application-service
+  name: csharp-application-service
 spec:
   ports:
     - port: 80
-      targetPort: 38080
+      targetPort: 48080
       protocol: TCP
   type: NodePort
   selector:
-    app.kubernetes.io/name: java-microservice
+    app.kubernetes.io/name: csharp-application
