@@ -3,7 +3,7 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml" />
     <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{ISO8601} [%thread] %-5level %logger{36} - [dd.trace_id=%X{dd.trace_id}] %msg%n</pattern>
+            <pattern>%d{ISO8601} [%thread] %-5level %logger{36} - [dd.trace_id=%X{dd.trace_id},dd.source=java] %msg%n</pattern>
         </encoder>
     </appender>
     <root level="info">
