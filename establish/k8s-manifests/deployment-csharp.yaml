@@ -18,7 +18,7 @@ spec:
         - name: csharp-application-container
           image: @ecr_container_url
           ports:
-            - containerPort: 48080
+            - containerPort: 5001
           env:
             # Datadog APM用にアプリケーションがトレースを送信する先のホスト
             - name: DD_AGENT_HOST
@@ -36,7 +36,7 @@ metadata:
 spec:
   ports:
     - port: 80
-      targetPort: 48080
+      targetPort: 5001
       protocol: TCP
   type: NodePort
   selector:

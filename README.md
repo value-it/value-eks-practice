@@ -267,7 +267,9 @@ kubectl logs -n kube-system deployment.apps/aws-load-balancer-controller
 kubectl apply -f ./establish/k8s-manifests/ingress.yaml
 ```
 
-
+### C# .netアプリ
+cat ./establish/k8s-manifests/deployment-csharp.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/eks-practice/csharp-application:latest|" | kubectl apply -f -
+kubectl apply -f ./establish/k8s-manifests/ingress-csharp.yaml
 
 ---
 
