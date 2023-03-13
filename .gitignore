@@ -23,3 +23,5 @@ build
 values.yaml
 datadog-charts.yaml
 iam_policy.json
+
+logs/
