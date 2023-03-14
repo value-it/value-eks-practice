@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/aspnet:6.0 AS base
 WORKDIR /app
-EXPOSE 5001
+EXPOSE 5000
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 # Download the tracer
@@ -39,5 +39,7 @@ ENV CORECLR_PROFILER={846F5F1C-F9AE-4B07-969E-05C26BC060D8}
 ENV CORECLR_PROFILER_PATH=/opt/datadog/Datadog.Trace.ClrProfiler.Native.so
 ENV DD_DOTNET_TRACER_HOME=/opt/datadog
 ENV DD_INTEGRATIONS=/opt/datadog/integrations.json
+
+ENV ASPNETCORE_URLS http://*:5000
 
 ENTRYPOINT ["dotnet", "sample-application-csharp.dll"]

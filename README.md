@@ -268,9 +268,11 @@ kubectl apply -f ./establish/k8s-manifests/ingress.yaml
 ```
 
 ### C# .netアプリ
+```shell
 cat ./establish/k8s-manifests/deployment-csharp.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/eks-practice/csharp-application:latest|" | kubectl apply -f -
+# cat ./establish/k8s-manifests/deployment-csharp.yaml | sed "s|@ecr_container_url|${AWS_ACCOUNT_ID}.dkr.ecr.$REGION.amazonaws.com/eks-practice/csharp-application:latest|" | kubectl replace --force -f -
 kubectl apply -f ./establish/k8s-manifests/ingress-csharp.yaml
-
+```
 ---
 
 # 削除手順
