@@ -27,8 +27,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+            # Datadog に送信するトレース情報に付与する環境識別子
             - name: DD_ENV
-              value: java-app
+              value: sample-env
+
 ---
 apiVersion: v1
 kind: Service

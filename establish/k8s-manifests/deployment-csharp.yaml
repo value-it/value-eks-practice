@@ -25,10 +25,10 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
-            - name: DD_TRACE_ENABLED
-              value: "true"
+            # Datadog に送信するトレース情報に付与する環境識別子
             - name: DD_ENV
-              value: csharp-app
+              value: sample-env
+
 ---
 apiVersion: v1
 kind: Service

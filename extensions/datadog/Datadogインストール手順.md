@@ -55,9 +55,58 @@ kubectl get svc -n kube-system
 > https://app.datadoghq.com/dashboard/lists?q=cluster+overview
 
 ---
+
+## APMとログ連携を動かす手順
+
+### 1. DatadogエージェントのHelmコンフィグレーションで以下を設定
+datadog-charts.yaml の以下の箇所を編集
+```yaml
+datadog:
+  # APM連携を有効にする場合は以下をtrueにする
+  apm:
+    portEnabled: true
+  
+  # ログ連携を有効にする場合は以下の2つをtrueにする
+  logs:
+    enabled: true
+    containerCollectAll: true
+    
+agents:
+  containers:
+    agent:
+      env:
+        - name: DD_CLOUD_PROVIDER_METADATA
+          value: "aws"
+          # デフォルトのままだとGCPのAPIを呼ぼうとしてエラーログを吐くためAWSを明示的に指定
+```
+
+反映
+```shell
+helm upgrade datadog \
+-f datadog-charts.yaml \
+-n kube-system \
+--set datadog.apiKey=$DATADOG_API_KEY \
+datadog/datadog
+```
+
+### 2. アプリに設定追加
+アプリDeployマニフェストファイルに環境変数追加しデプロイ
+```yaml
+env:
+  # Datadog APM用にアプリケーションがトレースを送信する先のホスト指定
+  - name: DD_AGENT_HOST
+    valueFrom:
+      fieldRef:
+        fieldPath: status.hostIP
+  # Datadog に送信するトレース情報に付与する環境識別子指定
+  - name: DD_ENV
+    value: sample-env
+```
+※`DD_ENV` はDatadogエージェント側の設定でも可能だが、ログ連携時にenvが連携されない仕様のためアプリDeployマニフェストで指定する
+
 ---
 
-# DatadogでAWS各種リソースを監視するための連携設定
+## DatadogでAWS各種リソースを監視するための連携設定
 EC2やALB等、EKSクラスター以外のリソースを監視する場合はAmazon Web Services Integrationのセットアップが必要
 
 ## セットアップ手順
@@ -73,39 +122,3 @@ EC2やALB等、EKSクラスター以外のリソースを監視する場合はAm
 5. 連携に必要なIAMやLamda等各種リソースが出来上がる
 
 
----
-
-# APMを動かす手順
-datadog-charts.yaml の以下の箇所を編集し、`helm upgrade` でagentに反映する  
-`DD_ENV` の値は環境を表す文字列に適宜書き換え
-
-```yaml
-datadog:
-  apm:
-    portEnabled: true
-
-agents:
-  containers:
-    agent:
-      env:
-        - name: DD_CLOUD_PROVIDER_METADATA
-          value: "aws"
-          # デフォルトのままだとGCPのAPIを呼ぼうとしてエラーログを吐くためAWSを明示的に指定
-
-    traceAgent:
-      env:
-        - name: DD_ENV
-          value: hogehoge
-```
-
-```shell
-helm upgrade datadog \
--f datadog-charts.yaml \
--n kube-system \
---set datadog.apiKey=$DATADOG_API_KEY \
-datadog/datadog
-```
-
-# アプリログをDatadogで監視するための設定
-
-TBD
