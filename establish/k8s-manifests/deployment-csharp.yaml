@@ -25,6 +25,8 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: status.hostIP
+            - name: DD_TRACE_ENABLED
+              value: "true"
             - name: DD_ENV
               value: csharp-app
 ---
