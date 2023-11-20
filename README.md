@@ -74,11 +74,6 @@ aws cloudformation deploy \
 --stack-name eks-practice-template-securitygroup \
 --template-file ./establish/cloudformation/02.securitygroup.yaml
 
-# VPCエンドポイント
-aws cloudformation deploy \
---stack-name eks-practice-template-vpc-endpoint \
---template-file ./establish/cloudformation/03.vpc-endpoint.yaml
-
 # CI Base
 aws cloudformation deploy \
 --stack-name eks-practice-template-ci-base \
@@ -150,9 +145,9 @@ eksctl create nodegroup \
 --node-type t3.small \
 --node-volume-size 10 \
 --node-volume-type gp2 \
---nodes 2 \
---nodes-min 2 \
---nodes-max 2 \
+--nodes 1 \
+--nodes-min 1 \
+--nodes-max 1 \
 --ssh-access \
 --ssh-public-key $NODES_SSH_PUBLIC_KEY \
 --managed
@@ -199,7 +194,7 @@ kubectl create configmap fluent-bit-cluster-info \
 # FluentBit daemonsetをクラスターにダウンロードしてデプロイ
 kubectl apply -f https://raw.githubusercontent.com/aws-samples/amazon-cloudwatch-container-insights/latest/k8s-deployment-manifest-templates/deployment-mode/daemonset/container-insights-monitoring/fluent-bit/fluent-bit-compatible.yaml
 
-# デプロイされたPodを確認（2件表示される）
+# デプロイされたPodを確認
 kubectl get pods -n amazon-cloudwatch
 ```
 
